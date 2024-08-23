@@ -9,20 +9,184 @@
 
 from datetime import datetime as dt
 
+class Usuario():
+
+    usuarios = []
+    proximo_id_usuario = 1
+
+    def __init__(self, id, nome, cpf, data_nascimento, **dados_enderecos):
+
+        self.id = id
+        self.nome = nome
+        self.cpf = cpf
+        self.data_nascimento = data_nascimento
+        self.logradouro = dados_enderecos['logradouro']
+        self.numero = dados_enderecos['numero']
+        self.bairro = dados_enderecos['bairro']
+        self.cidade = dados_enderecos['cidade']
+        self.sigla_estado = dados_enderecos['sigla_estado']
+        self._endereco = f"{self.logradouro}, {self.numero} - {self.bairro} - {self.cidade}/{self.sigla_estado}"
+
+        pass 
+    
+    @property
+    def endereco(self):
+        return self._endereco
+
+    @classmethod
+    def usuario_existente(cls, cpf):
+        for usuario in cls.usuarios:
+            if usuario.cpf == cpf:
+                return True, usuario
+        return False, None
+
+    @classmethod
+    def criar_usuario(cls, cpf):
+
+        ic_existe, usuario = cls.usuario_existente(cpf)
+        if ic_existe:
+            print("Usuario ja existe.")
+        else:
+            nome = input("Digite o nome: ")
+            data_nascimento = input("Digite a data de nascimento: ")
+
+            print("Vamos cadastrar o endereço! \n")
+            logradouro = input("Digite o logradouro: ")
+            numero = input("Digite o numero: ")
+            bairro = input("Digite o bairo: ")
+            cidade = input("Digite a cidade: ")
+            sigla_estado = input("Digite a sigla do estado: ")
+
+            usuario = Usuario(**{
+                'id': cls.proximo_id_usuario,
+                'cpf': cpf,
+                'nome': nome,
+                'data_nascimento': data_nascimento,
+                'logradouro': logradouro,
+                'numero': numero,
+                'bairro': bairro,
+                'cidade': cidade,
+                'sigla_estado': sigla_estado,
+            })
+
+            cls.proximo_id_usuario += 1
+            cls.usuarios.append(usuario)
+            print("Usuario criado")
+        return usuario
+
+    pass
+
+
+class Conta():
+
+    LIMITE_QTD_SAQUES = 3
+    LIMITE_VR_SAQUE = 500
+    proximo_numero_conta = 1
+    contas = []
+
+    def __init__(self, usuario, conta):
+        self.usuario = usuario
+        self._agencia = "0001"
+        self.conta = conta
+        self._saldo = 0
+        self._extrato = []
+        self._numero_saques = 0
+
+    @property
+    def agencia(self):
+        return self._agencia
+    
+    @property
+    def saldo(self):
+        return self._saldo
+    
+    @property
+    def extrato(self):
+        return self._extrato
+    
+    @extrato.setter
+    def extrato(self, mensagem):
+        self._extrato.append(f"{dt.now()} - {mensagem}")
+
+    @extrato.getter
+    def extrato(self):
+        mensagem_extrato = ""
+        for mensagem in self._extrato:
+            mensagem_extrato += (mensagem + "\n")
+        return mensagem_extrato
+        
+    @property
+    def numero_saques(self):
+        return self._numero_saques
+    
+    @numero_saques.setter
+    def numero_saques(self, incremento):
+        self._numero_saques += incremento
+
+    @classmethod
+    def criar_conta(cls, usuario):
+        conta = cls(usuario=usuario,conta=cls.proximo_numero_conta)
+        cls.proximo_numero_conta += 1
+        cls.contas.append(conta)
+        return conta
+    
+    @classmethod
+    def listar_contas(cls, usuario):
+        print("------------------------- Contas ------------------------")
+        for conta in cls.contas:
+            if conta.usuario == usuario:
+                print(f"Agencia: {conta.agencia} - Conta: {conta.conta}")
+        print("---------------------------------------------------------")
+
+    @classmethod
+    def conta_existente(cls, usuario, numero_conta):
+        for conta_verifica in cls.contas:
+            if conta_verifica.usuario == usuario \
+                and numero_conta == conta_verifica.conta:
+                return True, conta_verifica
+        return False, None
+
+    def depositar(self, valor_depositar):
+        self._saldo += valor_depositar
+        self.extrato = f"Valor depositado: R${valor_depositar:.2f}"
+        print("Deposito feito!")
+
+    def sacar(self, valor_sacar):
+        if valor_sacar > self.LIMITE_VR_SAQUE:
+            print("Valor acima do limite de saque!")
+        elif self.numero_saques >= self.LIMITE_QTD_SAQUES:
+            print("Você atingiu o limite de saques!")
+        elif valor_sacar > self._saldo:
+            print("Saldo indisponivel!")
+        else:
+            self._saldo -= valor_sacar
+            self.extrato = f"Valor sacado: R${valor_sacar:.2f}"
+            self.numero_saques = 1
+            print("Saque feito!")
+
+    def ver_extrato(self):
+        print("-------------------------- Extrato ----------------------")
+        print(f"ID: {self.usuario.id}")
+        print(f"Nome: {self.usuario.nome}")
+        print(f"CPF: {self.usuario.cpf}")
+        print(f"Data de Nascimento: {self.usuario.data_nascimento}")
+        print(f"Endereco: {self.usuario.endereco}")
+        print("---------------------------------------------------------")
+        print(f"Agencia: {self.agencia}")
+        print(f"Conta: {self.conta}")
+        print("---------------------------------------------------------")
+        print(self.extrato)
+        print("---------------------------------------------------------")
+        print(f"Saldo Atual: R${self.saldo:.2f}")
+        print("---------------------------------------------------------")
+
+    pass
+
 
 class SistemaBancario():
 
-    def __init__(self) -> None:
-
-        self.LIMITE_QTD_SAQUES = 3
-        self.LIMITE_VR_SAQUE = 500
-        self.proximo_id_usuario = 1
-        self.proximo_numero_conta = 1
-        self.usuarios = []
-        self.contas = []
-
+    def __init__(self):
         self.iniciar_interacao_usuario()
-
         pass
     
     @staticmethod
@@ -66,124 +230,19 @@ Qual transação deseja fazer:
     def resgatar_cpf():
         return input("Digite o numero do seu cpf: \n=>").replace(".", "").replace("-", "")
 
-    def depositar(self, conta):
-        valor_depositar = float(input("Digite o valor que deseja depositar: \n"))
-        conta['saldo'] += valor_depositar
-        conta['extrato'] += f"{dt.now()} - Valor depositado: R${valor_depositar:.2f}\n"
-        print("Deposito feito!")
-
-    def sacar(self, conta):
-        valor_sacar = float(input("Digite o valor que deseja sacar: \n=>"))
-        if valor_sacar > self.LIMITE_VR_SAQUE:
-            print("Valor acima do limite de saque!")
-        elif conta['numero_saques'] >= self.LIMITE_QTD_SAQUES:
-            print("Você atingiu o limite de saques!")
-        elif valor_sacar > conta['saldo']:
-            print("Saldo indisponivel!")
-        else:
-            conta['saldo'] -= valor_sacar
-            conta['extrato'] += f"{dt.now()} - Valor sacado: R${valor_sacar:.2f}\n"
-            conta['numero_saques'] += 1
-            print("Saque feito!")
-
-    def ver_extrato(self, usuario, conta):
-        print("-------------------------- Extrato ----------------------")
-        print(f"ID: {usuario['id']}")
-        print(f"Nome: {usuario['nome']}")
-        print(f"CPF: {usuario['cpf']}")
-        print(f"Data de Nascimento: {usuario['data_nascimento']}")
-        print(f"Endereco: {usuario['endereco']}")
-        print("---------------------------------------------------------")
-        print(f"Agencia: {conta['agencia']}")
-        print(f"Conta: {conta['conta']}")
-        print("---------------------------------------------------------")
-        print(conta['extrato'])
-        print("---------------------------------------------------------")
-        print(f"Saldo Atual: R${conta['saldo']:.2f}")
-        print("---------------------------------------------------------")
-        
-    def conta_existente(self, usuario, conta):
-
-        for conta_verifica in self.contas:
-            if conta_verifica['usuario'] == usuario['id'] \
-                and conta == conta_verifica['conta']:
-                return True, conta_verifica
-        return False, None
-
-    def criar_conta(self, usuario):
-
-        conta = {
-            "usuario": usuario["id"],
-            "agencia": "0001",
-            "conta": self.proximo_numero_conta,
-            "saldo": 0,
-            "extrato": "",
-            "numero_saques": 0,
-        }
-        self.proximo_numero_conta += 1
-        self.contas.append(conta)
-
-        if bool(input("Deseja realizar transações nesta conta? 1 - Sim\n=>")):
-            self.realizar_transacoes(usuario, conta)
-
-    def listar_contas(self, usuario):
-        print("------------------------- Contas ------------------------")
-        for conta in self.contas:
-            if conta['usuario'] == usuario['id']:
-                print(f"Agencia: {conta['agencia']} - Conta: {conta['conta']}")
-        print("---------------------------------------------------------")
-
-    def usuario_existente(self, cpf):
-        for usuario in self.usuarios:
-            if usuario['cpf'] == cpf:
-                return True, usuario
-        return False, None
-
-    def criar_usuario(self):
-
-        cpf = self.resgatar_cpf()
-        ic_existe, usuario = self.usuario_existente(cpf)
-        if ic_existe:
-            print("Usuario ja existe.")
-        else:
-            nome = input("Digite o nome: ")
-            data_nascimento = input("Digite a data de nascimento: ")
-
-            print("Vamos cadastrar o endereço! \n")
-            logradouro = input("Digite o logradouro: ")
-            numero = input("Digite o numero: ")
-            bairro = input("Digite o bairo: ")
-            cidade = input("Digite a cidade: ")
-            sigla_estado = input("Digite a sigla do estado: ")
-
-            endereco = f"{logradouro}, {numero} - {bairro} - {cidade}/{sigla_estado}"
-
-            usuario = {
-                'id': self.proximo_id_usuario,
-                'cpf': cpf,
-                'nome': nome,
-                'data_nascimento': data_nascimento,
-                'endereco': endereco,
-            }
-
-            self.proximo_id_usuario += 1
-            self.usuarios.append(usuario)
-            print("Usuario criado")
-
-        if bool(input("Deseja realizar transações? 1 - Sim\n=>")):
-            self.iniciar_interacao_conta(usuario)
-
-    def realizar_transacoes(self, usuario, conta):
+    def realizar_transacoes(self, conta):
         while(True):
             # Transações
             opcao = input(self.menu(3))
             match(opcao):
                 case "d":
-                    self.depositar(conta)
+                    valor_depositar = float(input("Digite o valor que deseja depositar: \n"))
+                    conta.depositar(valor_depositar)
                 case "s":
-                    self.sacar(conta)
+                    valor_sacar = float(input("Digite o valor que deseja sacar: \n=>"))
+                    conta.sacar(valor_sacar)
                 case "e":
-                    self.ver_extrato(usuario, conta)
+                    conta.ver_extrato()
                 case "q":
                     break
                 case _:
@@ -192,18 +251,20 @@ Qual transação deseja fazer:
     def iniciar_interacao_conta(self, usuario):
 
         while(True):
-            self.listar_contas(usuario)
+            Conta.listar_contas(usuario)
             opcao = int(input(self.menu(2)))
             match(opcao):
                 case 1:
                     numero_conta = int(input("Digite o numero da conta: "))
-                    ic_existe, conta = self.conta_existente(usuario, numero_conta)
+                    ic_existe, conta = Conta.conta_existente(usuario, numero_conta)
                     if ic_existe:
-                        self.realizar_transacoes(usuario, conta)
+                        self.realizar_transacoes(conta)
                     else:
                         print("Conta inexistente, confira o numero ou crie uma.")
                 case 2:
-                    self.criar_conta(usuario)
+                    conta = Conta.criar_conta(usuario)
+                    if bool(input("Deseja realizar transações nesta conta? 1 - Sim\n=>")):
+                        self.realizar_transacoes(conta)
                 case 0:
                     break
                 case _:
@@ -217,13 +278,16 @@ Qual transação deseja fazer:
             match(opcao):
                 case 1:
                     cpf = self.resgatar_cpf()
-                    ic_existe, usuario_existente = self.usuario_existente(cpf)
+                    ic_existe, usuario_existente = Usuario.usuario_existente(cpf)
                     if ic_existe:
                         self.iniciar_interacao_conta(usuario_existente)
                     else:
                         print("Usuario inexistente, confira o cpf ou crie um cadastro")
                 case 2:
-                    self.criar_usuario()
+                    cpf = self.resgatar_cpf()
+                    usuario = Usuario.criar_usuario(cpf)
+                    if bool(input("Deseja realizar transações? 1 - Sim\n=>")):
+                        self.iniciar_interacao_conta(usuario)
                 case 0:
                     break
                 case _:
